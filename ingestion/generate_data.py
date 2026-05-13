@@ -202,11 +202,11 @@ class EastAfricaAgricultureDataGenerator:
                 "wind_speed_kmh":round(random.uniform(5,20),1),
 
                 #Soil moisture and conditions
-                "soil_moisture_vol-pct":round(random.uniform(15,45),1),
+                "soil_moisture_vol_pct":round(random.uniform(15,45),1),
                 "soil_temp_c":round(base_temp - 2 + random.uniform(-3,3),1),
 
                 #Agricultural Indicators
-                'drought_risk':"low" if rain_factor > 0.8 else "Moderate" if rain_factor > 0.5 else "High",
+                'drought_risk':"low" if rain_factor > 0.8 else "Moderate" if rain_factor > 0.5 else "high",
                 "flood_risk":"high" if rain_factor > 1.5 else "low",
                 "frost_risk":"Yes" if base_temp < 5 else "No"
             }
