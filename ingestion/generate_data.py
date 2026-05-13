@@ -1,4 +1,4 @@
-import json
+
 import random
 import numpy as np
 import pandas as pd
@@ -63,6 +63,95 @@ class EastAfricaAgricultureDataGenerator:
         self.start_date = datetime.strptime(start_date, "%Y-%m-%d")
         self.end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
+    def _get_growth_stage(self,day: int,total_days: int) ->str:
+        """Determine crop growth stage based on day after planting"""
+        stage_pct = day/total_days
+
+        if stage_pct < 0.2:
+            return "Germination/ Seedling"
+        elif stage_pct < 0.4:
+            return "Vegetative"
+        elif stage_pct < 0.6:
+            return "Flowering"
+        elif stage_pct < 0.8:
+            return "Grain filling"
+        else:
+            return "Maturity/harvest"
+
+    def _calculate_height(self,day: int,total_days: int,crop: str) -> float:
+        """Calculate plant height in cm based on crop type and growth stage"""
+
+        base_height={
+            "Maize":200,
+            "Beans":50,
+            "Coffee":300,
+            "Tea":150,
+            "Cassava":200,
+            "Sweet_Potato":30,
+            "Banana":400,
+            "Sorghum":180,
+            "Millet":150,
+        }
+        max_height = base_height.get(crop,100)
+
+        #growth progress (0 -> 1)
+        progress = day/total_days
+
+        #Logistic growth curve for realistic height progression
+        growth_curve=  1 / (1 + np.exp(-10 * (progress - 0.5)))
+        height = max_height * growth_curve
+
+        #small natural randomness
+        height += random.uniform(-3,3)
+
+        return max(0, round(height,1))
+
+    def _calculate_yield(self,health_score: float, crop:str)->float:
+        """calculate estimated yield in tons per hectare"""
+        base_yield={
+            "Maize":3.5,
+            "Beans":1.5,
+            "Coffee":2.5,
+            "Tea":2.5,
+            "Cassava":15,
+            "Sweet_Potato":10,
+            "Banana":20,
+            "Sorghum":2.0,
+            "Millet":2.0,
+        }
+
+        base_yield = base_yield.get(crop,5.0)
+
+        #Health score affects yield( 80% health = 80% of potential yield)
+        return round(base_yield * (health_score/100),2)
+
+    def _calculate_pest_risk(self,growth_stage:str,crop:str)->str:
+        """Calculate pest/diseases risk based on growth stage and crop type"""
+        pests = {
+            "Maize": ["Fall Armyworm", "Maize Stem Borer", "Maize Streak Virus"],
+            "Beans": ["Aphids", "Bean Fly", "Angular Leaf Spot"],
+            "Coffee": ["Coffee Berry Borer", "Coffee Leaf Rust", "Antestia Bug"],
+            "Tea": ["Tea Mosquito Bug", "Red Spider Mite", "Blister Blight"],
+            "Cassava": ["Cassava Mosaic Virus", "Cassava Brown Streak", "Green Mite"],
+            "Sweet_Potato": ["Weevil", "Alternaria Blight", "Sweet Potato Virus"],
+            "Banana": ["Banana Weevil", "Sigatoka", "Panama Disease"],
+            "Sorghum": ["Shoot Fly", "Stem Borer", "Grain Mold"],
+            "Millet": ["Downy Mildew", "Head Miner", "Ergot"]
+        }
+
+        #Determine risk level based on growth stage
+        if growth_stage in ['Flowering','Grain filling']:
+            risk_level="High"
+            if crop in pests:
+                pest = random.choice(pests[crop])
+                return f"{risk_level} risk of {pest}"
+            return f"{risk_level} risk of pest infestation"
+
+        elif growth_stage in ['Vegetative']:
+            return "Moderate risk of pests"
+
+        else:
+            return "Low risk"
     def generate_daily_weather(self,location: str) -> Dict:
 
         """Generate daily weather data for a specific location"""
@@ -107,7 +196,7 @@ class EastAfricaAgricultureDataGenerator:
                 "temp_max_c":round(base_temp +5 + random.uniform(-2,2),1),
                 "temp_avg_c":round(base_temp + random.uniform(-3,3),1),
                 "humidity_pct":random.randint(40,100),
-                "precipitation_mm":round(max(0,random.gauss(4*rain_factor,3)),1),
+                "precipitation_mm":round(max(0,random.gauss(4*rain_factor,3.0)),1),
                 "evapotranspiration_mm":round(random.uniform(2,6),1),
                 "solar_radiation_mj_m2":round(random.uniform(15,25),1),
                 "wind_speed_kmh":round(random.uniform(5,20),1),
@@ -127,6 +216,8 @@ class EastAfricaAgricultureDataGenerator:
 
         return weather_data
 
+
+
     def generate_crop_growth_data(self,location:str,crop_name: str,planting_date: str) -> Dict:
 
         """Generate daily crop growth monitoring data """
@@ -141,7 +232,7 @@ class EastAfricaAgricultureDataGenerator:
             growth_stage = self._get_growth_stage(day, crop['growing_days'])
 
             #Simulate growth parameters
-            health_score = max(0, min(100, random.gauss(85,10)))
+            health_score = max(0, min(100, random.gauss(85.0,10.0)))
 
             daily_growth = {
                 "location": location,
@@ -154,17 +245,14 @@ class EastAfricaAgricultureDataGenerator:
                 "planting_height_cm": round(self._calculate_height(day ,crop['growing_days'],crop_name),2),
                 "health_score": health_score,
                 "stress_level":"Normal" if health_score > 70 else "Mild" if health_score > 40 else "Severe",
-                "estimated_yield_tons_ha":round(self._calculate_tield(health_score,crop_name),2),
+                "estimated_yield_tons_ha":round(self._calculate_yield(health_score,crop_name),2),
                 "pest_risk":self._calculate_pest_risk(growth_stage,crop_name),
                 "irrigation_needed":day % 7 == 0 # Every 7 Days
 
 
             }
+            growth_data[current_date.strftime("%Y-%m-%d")] = daily_growth
 
-            growth_data.append(daily_growth)
+
         return growth_data
 
-generator = EastAfricaAgricultureDataGenerator()
-weather=generator.generate_daily_weather(location="Nairobi_Kenya")
-print(type(weather))
-print(weather)

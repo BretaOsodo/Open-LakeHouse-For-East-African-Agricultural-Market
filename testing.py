@@ -1,9 +1,5 @@
 from ingestion.generate_data import EastAfricaAgricultureDataGenerator
 
 generator= EastAfricaAgricultureDataGenerator()
-weather_nairobi= generator.generate_daily_weather(location="Nairobi_Kenya")
-weather_nakuru= generator.generate_daily_weather(location="Nakuru_Kenya")
-weather_kampala= generator.generate_daily_weather(location="Kampala_Uganda")
-print(weather_nairobi)
-print(weather_nakuru)
-print(weather_kampala)
+crop_growth=generator.generate_crop_growth_data(location='Nairobi_Kenya',crop_name='Maize',planting_date='2025-03-31')
+print(crop_growth)
