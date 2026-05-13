@@ -1,16 +1,17 @@
-# This is a sample Python script.
+import requests
+import json
 
-# Press Ctrl+F5 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+def get_data():
+    request=requests.get("https://archive-api.open-meteo.com/v1/archive?latitude=51.5&longitude=-0.12&start_date=2026-05-01&end_date=2026-05-07&hourly=temperature_2m")
 
+    #get data as a python dict
+    data= request.json()
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press F9 to toggle the breakpoint.
+    #Convert to pretty JSON string for display
+    pretty_json = json.dumps(data, indent=4)
 
+    return pretty_json
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+called_data = get_data()
+print(called_data)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
