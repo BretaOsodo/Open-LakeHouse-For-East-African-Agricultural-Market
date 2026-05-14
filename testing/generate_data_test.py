@@ -53,6 +53,27 @@ def test_crop_growth_data(location,crop_name):
     assert data is not None
     assert len(data) > 0
 
+@pytest.mark.parametrize("location",[
+    "Nairobi_Kenya",
+    "Kampala_Uganda",
+    "Nakuru_Kenya",
+    "Dar_es_Salaam_Tanzania",
+    "Arusha_Tanzania",
+    "Kigali_Rwanda",
+    "Addis_Ababa_Ethiopia",
+    "Juba_South_Sudan",
+    "Mbale_Uganda",
+    "Mwanza_Tanzania"
+
+])
+
+def test_field_data(location):
+    data=generator.generate_field_data(location)
+    assert isinstance(data,dict)
+    assert data is not None
+    assert len(data) > 0
+
 if __name__ == '__main__':
     test_daily_weather_generation()
     test_crop_growth_data()
+    test_field_data()

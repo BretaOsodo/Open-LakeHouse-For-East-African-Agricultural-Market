@@ -1,6 +1,6 @@
-from ingestion.generate_data import EastAfricaAgricultureDataGenerator
+from ingestion import EastAfricaAgricultureDataGenerator
 import json
-generator= EastAfricaAgricultureDataGenerator()
+generator = EastAfricaAgricultureDataGenerator()
 
-weather_data = generator.generate_daily_weather('Nairobi_Kenya')
-print(json.dumps(weather_data, indent=4))
+farmers_data = generator.generate_farmer_data('Nairobi_Kenya')
+print(json.dumps(farmers_data, indent=4))

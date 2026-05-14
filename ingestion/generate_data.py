@@ -256,3 +256,53 @@ class EastAfricaAgricultureDataGenerator:
 
         return growth_data
 
+    def generate_field_data(self,location: str)->Dict:
+
+        """Generate field data as a dictionary indexed by field_id"""
+
+        fields={}
+        soil_types = ["Luvisol", "Ferralsol", "Acrisol", "Nitisol", "Andosol", "Vertisol", "Cambisol"]
+
+        for i in range(random.randint(2,4)):
+            field_id = f"{location.replace('_','').upper()}_FIELD_{i+1}"
+            fields[field_id] = {
+                "location": location,
+                "soil_type": random.choice(soil_types),
+                "soil_ph":round(random.uniform(0,14),1),
+                "organic_matter_pct":round(random.uniform(2,6),1),
+                "nitrogen_ppm":random.randint(20,100),
+                "phosphorous_ppm":random.randint(20,100),
+                "potassium_ppm":random.randint(20,200),
+                "cation_exchange_capacity":round(random.uniform(10,30),1),
+                "drainage_class":random.choice(['Well drained','Moderate','Poor']),
+                "erosion_risk":random.choice(['Low','Moderate','High']),
+                "last_soil_test_date":(datetime.now() - timedelta(days=random.randint(160,365))).strftime("%Y-%m-%d"),
+
+            }
+        return fields
+
+    def generate_farmer_data(self,location: str)->Dict:
+
+        """Generate farmers data as a dictionary indexed by farmer_id"""
+
+        farmers ={}
+
+        for i in range(random.randint(5,10)):
+            farmer_id = f"FARMER_{location[:3].upper()}_{i+1:03d}"
+            crop_planted= random.sample(list(self.CROPS.keys()),random.randint(1,3))
+
+            farmers[farmer_id] = {
+                'location': location,
+                'farm_size_hectares':round(random.uniform(0.5,10),1),
+                'crop_grown':crop_planted,
+                'farming_practice':random.choice(['Rainfed','Drip','Sprinkler','Manual']),
+                'access_to_extension':random.choice([True,False]),
+                'mobile_phone_owner':random.choice([True,False]),
+                'uses_weather_app':random.choice([True,False]),
+                'cooperative_member':random.choice([True,False]),
+                'registered_date':(datetime.now() - timedelta(days=random.randint(160,365))).strftime("%Y-%m-%d")
+
+            }
+
+        return farmers
+
