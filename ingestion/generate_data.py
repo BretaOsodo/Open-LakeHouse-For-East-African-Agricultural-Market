@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+import json
 
 class EastAfricaAgricultureDataGenerator:
 
@@ -305,4 +306,98 @@ class EastAfricaAgricultureDataGenerator:
             }
 
         return farmers
+
+def generate_lakehouse_data():
+    """Generate complete agriculture dataset as nested dictionaries"""
+
+    # Use 2025 data (past year) so it's realistic
+    generator = EastAfricaAgricultureDataGenerator("2025-01-01", "2025-12-31")
+
+    all_data = {
+        "metadata": {
+            "dataset_name": "East Africa Agriculture Weather Data",
+            "generated_at": datetime.now().isoformat(),
+            "version": "2.0",
+            "region": "East Africa",
+            "countries": ["Kenya", "Uganda", "Tanzania", "Rwanda", "Ethiopia", "South Sudan"],
+            "data_structure": "dictionary_based",
+            "date_range": "2025-01-01 to 2025-12-31"
+        },
+        "weather_data": {},
+        "crop_growth_data": {},
+        "field_data": {},
+        "farmer_data": {}
+    }
+
+    # Generate data for all locations
+    for location in generator.LOCATIONS.keys():
+        print(f"Generating data for {location}...")
+
+        # Weather data (dict of dates)
+        weather = generator.generate_daily_weather(location)
+        all_data["weather_data"][location] = weather
+        print(f"  Generated {len(weather)} weather records")
+
+
+        # Field data (dict of field_id)
+        fields = generator.generate_field_data(location)
+        all_data["field_data"][location] = fields
+        print(f"  ✓ Generated {len(fields)} field records")
+
+        # Farmer data (dict of farmer_id)
+        farmers = generator.generate_farmer_data(location)
+        all_data["farmer_data"][location] = farmers
+        print(f"  ✓ Generated {len(farmers)} farmer profiles")
+
+        # Crop growth data (nested dict: location -> crop -> planting_date -> dates)
+        all_data["crop_growth_data"][location] = {}
+        crops_to_monitor = random.sample(list(generator.CROPS.keys()), min(3, len(generator.CROPS)))
+
+        crop_count = 0
+        for crop in crops_to_monitor:
+            # Plant in different seasons based on location
+            if generator.LOCATIONS[location]["rainfall_pattern"] == "Bimodal":
+                planting_months = [3, 10]  # March and October
+            else:
+                planting_months = [4]  # April
+
+            for month in planting_months:
+                planting_date = f"2025-{month:02d}-{random.randint(1, 28):02d}"
+                growth = generator.generate_crop_growth_data(location, crop, planting_date)
+
+                if growth:  # Only add if we have data
+                    if crop not in all_data["crop_growth_data"][location]:
+                        all_data["crop_growth_data"][location][crop] = {}
+
+                    all_data["crop_growth_data"][location][crop][planting_date] = growth
+                    crop_count += len(growth)
+
+        print(f"  Generated {crop_count} crop growth records")
+        print(f"  Completed {location}\n")
+
+    return all_data
+
+
+if __name__ == "__main__":
+    print("🌾 Generating East Africa Agriculture Data as Dictionaries...")
+    print("=" * 60)
+
+    # Generate all data
+    agriculture_data = generate_lakehouse_data()
+
+    # Save as JSON
+    with open("east_africa_agriculture_dict.json", "w") as f:
+        json.dump(agriculture_data, f, indent=2)
+
+    print("\n" + "=" * 60)
+    print("DATA GENERATED SUCCESSFULLY!")
+    print("Saved to: east_africa_agriculture_dict.json")
+    print("=" * 60)
+
+    # Display sample
+    first_location = list(agriculture_data["weather_data"].keys())[0]
+    first_date = list(agriculture_data["weather_data"][first_location].keys())[0]
+
+    print(f"Sample from {first_location} on {first_date}:")
+    print(json.dumps(agriculture_data["weather_data"][first_location][first_date], indent=2))
 
