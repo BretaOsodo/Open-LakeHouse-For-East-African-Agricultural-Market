@@ -99,38 +99,36 @@ def write_to_silver_layer(df, table_name, partition_cols):
 
 
 def register_table_in_catalog(table_name, s3_location, partition_cols, df):
+    """Register the transformed table in Glue Data Catalog"""
+
     try:
-        # Get schema for dataframe
+        # Get the schema from DataFrame
         schema = df.schema
 
-        # Convert pyspark schema to GLue format
+        # Convert PySpark schema to Glue format
         columns = []
         for field in schema.fields:
             columns.append({
-                "Name": field.name,
-                "Type": spark_to_glue_type(
-                    filed.dataType.simpleString()),
-                "Comment": f'Column from {table_name}'
+                'Name': field.name,
+                'Type': field.dataType.simpleString().upper(),
+                'Comment': f'Column from {table_name}'
             })
 
-        # prepare partition keys
-        partition_keys = [{
-            "Name": col,
-            "Type": 'string'
-        } for col in partition_cols]
+        # Prepare partition keys
+        partition_keys = [{'Name': col, 'Type': 'string'} for col in partition_cols]
 
-        # create table in glue catalog
+        # Create table in Glue Catalog
         glue_client = boto3.client('glue')
 
         try:
-            # check if table exists
+            # Check if table exists
             glue_client.get_table(
                 DatabaseName=SILVER_DATABASE,
                 Name=table_name
             )
-            print(f'Table {table_name} already exists, updating...')
+            print(f"Table {table_name} already exists, updating...")
 
-            # Update existing table_name
+            # Update existing table
             glue_client.update_table(
                 DatabaseName=SILVER_DATABASE,
                 TableInput={
@@ -152,36 +150,34 @@ def register_table_in_catalog(table_name, s3_location, partition_cols, df):
                         'last_updated': datetime.now().isoformat()
                     }
                 }
-
             )
-            glue_client.exceptions.EntityNotFoundException:
-                # create new Table
-                glue_client.create_table(
-                    DatabaseName=SILVER_DATABASE,
-                    TableInput={
-                        'Name': table_name,
-                        'Description': f'Silver layer table - {table_name}',
-                        'StorageDescriptor': {
-                            'Columns': columns,
-                            'Location': s3_location,
-                            'InputFormat': 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat',
-                            'OutputFormat': 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat',
-                            'SerdeInfo': {
-                                'SerializationLibrary': 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
-                            }
-                        },
-                        'PartitionKeys': partition_keys,
-                        'TableType': 'EXTERNAL_TABLE',
-                        'Parameters': {
-                            'created_by': 'glue_job',
-                            'created_at': datetime.now().isoformat(),
-                            'source_database': BRONZE_DATABASE
-                        }
-                    }
-                )
 
+        except glue_client.exceptions.EntityNotFoundException:
+            # Create new table
+            glue_client.create_table(
+                DatabaseName=SILVER_DATABASE,
+                TableInput={
+                    'Name': table_name,
+                    'Description': f'Silver layer table - {table_name}',
+                    'StorageDescriptor': {
+                        'Columns': columns,
+                        'Location': s3_location,
+                        'InputFormat': 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat',
+                        'OutputFormat': 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat',
+                        'SerdeInfo': {
+                            'SerializationLibrary': 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
+                        }
+                    },
+                    'PartitionKeys': partition_keys,
+                    'TableType': 'EXTERNAL_TABLE',
+                    'Parameters': {
+                        'created_by': 'glue_job',
+                        'created_at': datetime.now().isoformat(),
+                        'source_database': BRONZE_DATABASE
+                    }
+                }
+            )
+            print(f"✅ Created table: {SILVER_DATABASE}.{table_name}")
 
     except Exception as e:
-        print(f'Error registering table in glue catalog: {str(e)}')
-
-# 1. Transform weather data
+        print(f'Error registering table in Glue Catalog: {str(e)}')
