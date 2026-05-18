@@ -57,7 +57,7 @@ def upload_all_partitioned_data():
                     s3_client.put_object(
                         Bucket=bronze_bucket_name,
                         Key=s3_key,
-                        Body=json.dumps(daily_data,indent=2),
+                        Body=json.dumps(daily_data),
                         ContentType='application/json'
                     )
                     stats['weather']+=1
@@ -85,7 +85,7 @@ def upload_all_partitioned_data():
                             s3_client.put_object(
                                 Bucket=bronze_bucket_name,
                                 Key=s3_key,
-                                Body=json.dumps(growth_data,indent=2),
+                                Body=json.dumps(growth_data),
                                 ContentType='application/json'
                             )
 
@@ -110,7 +110,7 @@ def upload_all_partitioned_data():
                     s3_client.put_object(
                         Bucket=bronze_bucket_name,
                         Key=s3_key,
-                        Body=json.dumps(farmer_info,indent=2),
+                        Body=json.dumps(farmer_info),
                         ContentType='application/json'
                     )
 
@@ -135,7 +135,7 @@ def upload_all_partitioned_data():
                     s3_client.put_object(
                         Bucket=bronze_bucket_name,
                         Key=s3_key,
-                        Body=json.dumps(field_Info,indent=2),
+                        Body=json.dumps(field_Info),
                         ContentType='application/json'
                     )
 
