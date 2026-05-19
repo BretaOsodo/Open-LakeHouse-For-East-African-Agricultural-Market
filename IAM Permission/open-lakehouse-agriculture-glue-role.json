@@ -20,6 +20,28 @@
 				"arn:aws:s3:::breta-open-lakehouse-agriculture-scripts/*",
 				"arn:aws:s3:::breta-open-lakehouse-agriculture-scripts"
 			]
+		},
+		{
+			"Effect": "Allow",
+            "Action": [
+                "glue:CreateTable",
+                "glue:UpdateTable",
+                "glue:DeleteTable",
+                "glue:GetTable",
+                "glue:CreatePartition",
+                "glue:UpdatePartition",
+                "glue:GetPartitions"
+            ],
+            "Resource": "*"
+		},
+		{
+			"Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
 		}
 	]
 }
