@@ -74,7 +74,6 @@ def write_to_silver_layer(df, table_name, partition_cols):
     """
     output_path = f"s3://{SILVER_BUCKET}/silver/{table_name}"
 
-    # FIX D6: overwrite only the specific partitions present in this batch,
     # leaving all other existing partitions untouched.
     spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
@@ -96,7 +95,6 @@ def write_to_silver_layer(df, table_name, partition_cols):
 def register_table_in_catalog(table_name, s3_location, partition_cols, df):
     """
     Register or update the transformed table in the Glue Data Catalog.
-    FIX D7: partition key columns are excluded from StorageDescriptor.Columns
     because Glue (and Athena) expect them only in PartitionKeys.
     """
     try:
@@ -170,11 +168,7 @@ def register_table_in_catalog(table_name, s3_location, partition_cols, df):
 
 
 def register_partitions(table_name, s3_location, partition_cols, df):
-    """
-    FIX D8: Register new partitions in the Glue Catalog so Athena can
-    query them immediately without needing MSCK REPAIR TABLE.
-    Collects the distinct partition value combinations present in this batch.
-    """
+
     try:
         glue_client = boto3.client('glue')
 
@@ -256,7 +250,7 @@ def transform_weather_data():
                 )
 
             # Crop suitability score
-            # FIX B3: loop variable renamed to `c` to avoid shadowing pyspark col()
+
             if all(c in weather_df.columns for c in ['temp_avg_c', 'precipitation_mm', 'soil_moisture_vol_pct']):
                 weather_df = weather_df.withColumn(
                     "crop_suitability_score",
@@ -334,8 +328,8 @@ def transform_crop_data():
         if record_count > 0:
             print(f'Read {record_count} crop records')
 
-            # FIX B2 + B4: file_path is kept alive by extract_partitions_columns,
-            # used here for crop_type, then dropped explicitly.
+
+
             crop_df = extract_partitions_columns(crop_df, crop_path)
             crop_df = crop_df.withColumn(
                 "crop_type",
@@ -345,7 +339,7 @@ def transform_crop_data():
             crop_df = add_processing_metadata(crop_df)
 
             # Growth efficiency
-            # FIX B3: loop variable renamed to `c`
+
             if all(c in crop_df.columns for c in ['health_score', 'day_after_planting']):
                 crop_df = crop_df.withColumn(
                     "growth_efficiency",
@@ -418,8 +412,7 @@ def transform_farmer_data():
             farmer_df = farmer_df.drop("file_path")
             farmer_df = add_processing_metadata(farmer_df)
 
-            # Tech adoption score
-            # FIX B3: loop variable renamed to `c`
+
             if all(c in farmer_df.columns for c in ['mobile_phone_owner', 'uses_weather_app', 'access_to_extension']):
                 farmer_df = farmer_df.withColumn(
                     "tech_adoption_score",
@@ -481,7 +474,7 @@ def transform_field_data():
     try:
         field_df = spark.read.option("recursiveFileLookup", "true").json(field_path)
 
-        # FIX B5: cache and count once
+
         field_df = field_df.cache()
         record_count = field_df.count()
 
@@ -493,7 +486,7 @@ def transform_field_data():
             field_df = add_processing_metadata(field_df)
 
             # Soil fertility score
-            # FIX B3: loop variable renamed to `c`
+
             if all(c in field_df.columns for c in ['soil_ph', 'organic_matter_pct', 'nitrogen_ppm']):
                 field_df = field_df.withColumn(
                     "soil_fertility_score",
