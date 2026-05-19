@@ -68,13 +68,10 @@ def add_processing_metadata(df):
 
 
 def write_to_silver_layer(df, table_name, partition_cols):
-    """
-    Write DataFrame to Silver S3 location using partition overwrite mode
-    so retries do not produce duplicate rows (fixes D6).
-    """
+
     output_path = f"s3://{SILVER_BUCKET}/silver/{table_name}"
 
-    # leaving all other existing partitions untouched.
+
     spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
     df.write \
@@ -93,10 +90,7 @@ def write_to_silver_layer(df, table_name, partition_cols):
 
 
 def register_table_in_catalog(table_name, s3_location, partition_cols, df):
-    """
-    Register or update the transformed table in the Glue Data Catalog.
-    because Glue (and Athena) expect them only in PartitionKeys.
-    """
+
     try:
         schema = df.schema
         partition_set = set(partition_cols)  # FIX D7
@@ -229,17 +223,15 @@ def transform_weather_data():
     weather_path = f's3://{BRONZE_BUCKET}/weather/'
 
     try:
-        weather_df = spark.read.option("recursiveFileLookup", "true").json(weather_path)
+        weather_df = spark.read.json(weather_path)
 
-        # FIX B5: cache and count once
+
         weather_df = weather_df.cache()
         record_count = weather_df.count()
 
         if record_count > 0:
             print(f'Read {record_count} weather records')
 
-            weather_df = extract_partitions_columns(weather_df, weather_path)
-            weather_df = weather_df.drop("file_path")  # no extra path extraction needed
             weather_df = add_processing_metadata(weather_df)
 
             # Temperature conversion
@@ -319,7 +311,7 @@ def transform_crop_data():
     crop_path = f"s3://{BRONZE_BUCKET}/crops/"
 
     try:
-        crop_df = spark.read.option("recursiveFileLookup", "true").json(crop_path)
+        crop_df = spark.read.json(crop_path)
 
         # FIX B5: cache and count once
         crop_df = crop_df.cache()
@@ -327,15 +319,6 @@ def transform_crop_data():
 
         if record_count > 0:
             print(f'Read {record_count} crop records')
-
-
-
-            crop_df = extract_partitions_columns(crop_df, crop_path)
-            crop_df = crop_df.withColumn(
-                "crop_type",
-                regexp_extract(col("file_path"), "crop=([^/]+)", 1)
-            ).drop("file_path")
-
             crop_df = add_processing_metadata(crop_df)
 
             # Growth efficiency
@@ -399,20 +382,19 @@ def transform_farmer_data():
     farmer_path = f"s3://{BRONZE_BUCKET}/farmers/"
 
     try:
-        farmer_df = spark.read.option("recursiveFileLookup", "true").json(farmer_path)
+        farmer_df = spark.read.json(farmer_path)
 
-        # FIX B5: cache and count once
+
         farmer_df = farmer_df.cache()
         record_count = farmer_df.count()
 
         if record_count > 0:
             print(f"Read {record_count} farmer records")
 
-            farmer_df = extract_partitions_columns(farmer_df, farmer_path)
-            farmer_df = farmer_df.drop("file_path")
             farmer_df = add_processing_metadata(farmer_df)
 
-
+            # Tech adoption score
+            # FIX B3: loop variable renamed to `c`
             if all(c in farmer_df.columns for c in ['mobile_phone_owner', 'uses_weather_app', 'access_to_extension']):
                 farmer_df = farmer_df.withColumn(
                     "tech_adoption_score",
@@ -472,21 +454,19 @@ def transform_field_data():
     field_path = f"s3://{BRONZE_BUCKET}/fields/"
 
     try:
-        field_df = spark.read.option("recursiveFileLookup", "true").json(field_path)
+        field_df = spark.read.json(field_path)
 
-
+        # FIX B5: cache and count once
         field_df = field_df.cache()
         record_count = field_df.count()
 
         if record_count > 0:
             print(f"Read {record_count} field records")
 
-            field_df = extract_partitions_columns(field_df, field_path)
-            field_df = field_df.drop("file_path")
             field_df = add_processing_metadata(field_df)
 
             # Soil fertility score
-
+            # FIX B3: loop variable renamed to `c`
             if all(c in field_df.columns for c in ['soil_ph', 'organic_matter_pct', 'nitrogen_ppm']):
                 field_df = field_df.withColumn(
                     "soil_fertility_score",
