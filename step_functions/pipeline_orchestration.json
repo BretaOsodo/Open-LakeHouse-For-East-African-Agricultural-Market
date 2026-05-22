@@ -1,0 +1,216 @@
+{
+  "Comment": "Agriculture Open Lakehouse Pipeline — Full orchestration using AWS Step Functions",
+  "StartAt": "RunBronzeCrawler",
+  "States": {
+    "RunBronzeCrawler": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler",
+      "Parameters": {
+        "Name": "agriculture-bronze-crawler"
+      },
+      "ResultPath": "$.crawler_result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyCrawlerFailure",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "WaitForCrawler"
+    },
+
+    "WaitForCrawler": {
+      "Type": "Wait",
+      "Seconds": 60,
+      "Comment": "Wait for Glue crawler to finish metadata updates",
+      "Next": "RunBronzeToSilverGlueJob"
+    },
+
+    "RunBronzeToSilverGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "agriculture_transformation.py",
+        "Arguments": {
+          "--bronze_bucket": "breta-open-lakehouse-agriculture-bronze",
+          "--bronze_database": "agriculture_bronze_bd",
+          "--silver_bucket": "breta-open-lakehouse-agriculture-silver",
+          "--silver_database": "agriculture_silver_bd"
+        }
+      },
+      "ResultPath": "$.silver_result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifySilverFailure",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "RunDataQualityChecks"
+    },
+
+    "RunDataQualityChecks": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "agriculture_data_quality",
+        "Payload": {
+          "layer": "silver",
+          "database": "agriculture_silver_bd",
+          "tables": [
+            "weather_transformed",
+            "crop_growth_transformed",
+            "farmer_profiles_transformed",
+            "field_data_transformed"
+          ]
+        }
+      },
+      "ResultPath": "$.dq_result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyDQFailure",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "EvaluateDataQuality"
+    },
+
+    "EvaluateDataQuality": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.dq_result.Payload.quality_passed",
+          "BooleanEquals": true,
+          "Next": "RunSilverToGoldGlueJob"
+        }
+      ],
+      "Default": "NotifyDQFailure"
+    },
+
+    "RunSilverToGoldGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "agriculture_aggregation",
+        "Arguments": {
+          "--silver_database": "agriculture_silver_bd",
+          "--gold_bucket": "breta-open-lakehouse-agriculture-gold",
+          "--gold_database": "agriculture_gold_bd"
+        }
+      },
+      "ResultPath": "$.gold_result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyGoldFailure",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "NotifySuccess"
+    },
+
+    "NotifySuccess": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:eu-north-1:237124340255:open-lakehouse-agricultre-alerts",
+        "Subject": "[Agriculture Pipeline] Pipeline completed successfully",
+        "Message.$": "States.Format('Agriculture Open Lakehouse pipeline {} completed successfully.', $$.Execution.Id)"
+      },
+      "End": true
+    },
+
+    "NotifyCrawlerFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:eu-north-1:237124340255:open-lakehouse-agricultre-alerts",
+        "Subject": "[Agriculture Pipeline] FAILURE — Bronze crawler failed",
+        "Message.$": "States.JsonToString($.error)"
+      },
+      "End": true
+    },
+
+    "NotifySilverFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:eu-north-1:237124340255:open-lakehouse-agricultre-alerts",
+        "Subject": "[Agriculture Pipeline] FAILURE — Bronze to Silver ETL failed",
+        "Message.$": "States.JsonToString($.error)"
+      },
+      "End": true
+    },
+
+    "NotifyDQFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:eu-north-1:237124340255:open-lakehouse-agricultre-alerts",
+        "Subject": "[Agriculture Pipeline] WARNING — Data quality checks failed",
+        "Message.$": "States.JsonToString($.dq_result)"
+      },
+      "End": true
+    },
+
+    "NotifyGoldFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:eu-north-1:237124340255:open-lakehouse-agricultre-alerts",
+        "Subject": "[Agriculture Pipeline] FAILURE — Silver to Gold ETL failed",
+        "Message.$": "States.JsonToString($.error)"
+      },
+      "End": true
+    }
+  }
+}

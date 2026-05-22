@@ -1,0 +1,51 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GlueCrawlerPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "glue:StartCrawler",
+        "glue:GetCrawler"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "GlueJobPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "glue:StartJobRun",
+        "glue:GetJobRun",
+        "glue:GetJobRuns",
+        "glue:BatchStopJobRun"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SNSPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "sns:Publish"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
